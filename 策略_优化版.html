@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工业富联(601138) 量化监控看板 v2.0</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f7;
+            --text-primary: #000000;
+            --text-secondary: #3c3c43;
+            --text-tertiary: #8e8e93;
+            --accent-green: #34c759;
+            --accent-red: #ff3b30;
+            --accent-orange: #ff9500;
+            --accent-blue: #007aff;
+            --accent-purple: #af52de;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            padding-bottom: 60px;
+        }
+        .container { max-width: 430px; margin: 0 auto; padding: 0 12px; }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 16px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+        }
+        .header h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; color: #fff; }
+        .header-sub { font-size: 11px; color: #8e8e93; margin-bottom: 8px; }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            background: rgba(52,199,89,0.2);
+            color: var(--accent-green);
+            border: 1px solid rgba(52,199,89,0.3);
+        }
+        .version-badge {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 10px;
+            background: rgba(0,122,255,0.2);
+            color: var(--accent-blue);
+            border: 1px solid rgba(0,122,255,0.3);
+        }
+
+        .card {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 12px 0;
+        }
+        .card-title {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .price-card { text-align: center; padding: 24px 16px; }
+        .stock-name { font-size: 16px; color: var(--text-secondary); }
+        .stock-code { font-size: 13px; color: var(--text-tertiary); }
+        .current-price { font-size: 52px; font-weight: 700; margin: 12px 0 8px; }
+        .price-unit { font-size: 18px; color: var(--text-tertiary); }
+        .price-change { font-size: 20px; font-weight: 600; margin: 8px 0; }
+        .price-up { color: var(--accent-red); }
+        .price-down { color: var(--accent-green); }
+
+        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center; margin-top: 16px; }
+        .info-label { font-size: 11px; color: var(--text-tertiary); margin-bottom: 4px; }
+        .info-value { font-size: 14px; font-weight: 600; }
+
+        .indicator-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .indicator-box {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .indicator-name { font-size: 11px; color: var(--text-tertiary); margin-bottom: 8px; }
+        .indicator-row { display: flex; justify-content: space-between; font-size: 12px; margin: 3px 0; }
+        .indicator-label { color: var(--text-secondary); }
+        .indicator-value { font-weight: 600; }
+
+        #chart-container { background: var(--bg-secondary); border-radius: 8px; overflow: visible; position: relative; }
+
+        .card { transition: transform 0.25s ease, box-shadow 0.25s ease; cursor: pointer; border: 1px solid transparent; }
+        .card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 12px 32px rgba(0,0,0,0.25); }
+
+        /* ===== 策略主卡片 ===== */
+        .strategy-card { border-left: 4px solid #007aff; }
+        .strategy-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .strategy-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        .strategy-status { padding: 4px 10px; border-radius: 12px; font-size: 11px; background: rgba(0,122,255,0.15); color: #007aff; }
+
+        .strategy-main-signal { padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 16px; position: relative; overflow: hidden; }
+        .signal-建仓, .signal-加仓, .signal-重仓 { background: rgba(52,199,89,0.15); border: 1px solid rgba(52,199,89,0.3); }
+        .signal-弱买入 { background: rgba(52,199,89,0.08); border: 1px solid rgba(52,199,89,0.2); }
+        .signal-持有 { background: rgba(255,149,0,0.15); border: 1px solid rgba(255,149,0,0.3); }
+        .signal-减仓, .signal-止盈 { background: rgba(255,59,48,0.15); border: 1px solid rgba(255,59,48,0.3); }
+        .signal-清仓 { background: rgba(255,59,48,0.25); border: 1px solid rgba(255,59,48,0.4); }
+        .signal-止损 { background: rgba(175,82,222,0.2); border: 1px solid rgba(175,82,222,0.4); }
+        .signal-观望 { background: var(--bg-secondary); border: 1px solid #e5e5ea; }
+        .signal-default { background: var(--bg-secondary); border: 1px solid #e5e5ea; }
+
+        .signal-action-text { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+        .signal-建仓 .signal-action-text, .signal-加仓 .signal-action-text, .signal-重仓 .signal-action-text, .signal-弱买入 .signal-action-text { color: var(--accent-green); }
+        .signal-持有 .signal-action-text { color: var(--accent-orange); }
+        .signal-减仓 .signal-action-text, .signal-止盈 .signal-action-text, .signal-清仓 .signal-action-text { color: var(--accent-red); }
+        .signal-止损 .signal-action-text { color: var(--accent-purple); }
+        .signal-reason { font-size: 12px; color: var(--text-secondary); }
+
+        .signal-strength-badge {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-strong { background: rgba(52,199,89,0.2); color: var(--accent-green); }
+        .badge-weak { background: rgba(52,199,89,0.1); color: #30d158; }
+        .badge-hold { background: rgba(255,149,0,0.2); color: var(--accent-orange); }
+        .badge-sell { background: rgba(255,59,48,0.2); color: var(--accent-red); }
+        .badge-stop { background: rgba(175,82,222,0.2); color: var(--accent-purple); }
+        .badge-wait { background: rgba(142,142,147,0.2); color: var(--text-tertiary); }
+
+        .strategy-indicators { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+        .strategy-indicator { background: var(--bg-secondary); border-radius: 8px; padding: 12px; text-align: center; }
+        .strategy-indicator-label { font-size: 11px; color: var(--text-tertiary); margin-bottom: 4px; }
+        .strategy-indicator-value { font-size: 16px; font-weight: 600; }
+        .strategy-indicator-sub { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; }
+
+        /* ===== 条件区 ===== */
+        .condition-section { margin-bottom: 16px; }
+        .condition-list { background: var(--bg-secondary); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+        .condition-title { font-size: 11px; color: var(--text-tertiary); margin-bottom: 8px; font-weight: 600; }
+        .condition-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 12px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .condition-item:last-child { border-bottom: none; }
+        .condition-name { color: var(--text-secondary); }
+        .condition-status { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+        .condition-on { background: rgba(52,199,89,0.15); color: var(--accent-green); }
+        .condition-off { background: rgba(255,149,0,0.1); color: var(--accent-orange); }
+        .condition-warn { background: rgba(255,59,48,0.15); color: var(--accent-red); }
+
+        /* ===== 止损区 ===== */
+        .stoploss-section { background: rgba(175,82,222,0.08); border: 1px solid rgba(175,82,222,0.2); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+        .stoploss-title { font-size: 11px; color: var(--accent-purple); margin-bottom: 8px; font-weight: 600; }
+        .stoploss-item { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; }
+        .stoploss-label { color: var(--text-secondary); }
+        .stoploss-value { font-weight: 600; }
+
+        /* ===== 仓位管理 ===== */
+        .position-section { background: rgba(0,122,255,0.06); border: 1px solid rgba(0,122,255,0.15); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+        .position-title { font-size: 11px; color: var(--accent-blue); margin-bottom: 10px; font-weight: 600; }
+        .position-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; }
+        .position-item { background: var(--bg-primary); border-radius: 6px; padding: 8px 4px; }
+        .position-label { font-size: 10px; color: var(--text-tertiary); margin-bottom: 3px; }
+        .position-value { font-size: 13px; font-weight: 700; }
+
+        /* ===== 偏离度趋势条 ===== */
+        .deviation-section { margin-bottom: 16px; }
+        .deviation-labels { font-size: 11px; color: var(--text-tertiary); margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .trend-bar { height: 10px; background: var(--bg-secondary); border-radius: 5px; margin-top: 4px; overflow: hidden; position: relative; }
+        .trend-bar-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #34c759 0%, #34c759 25%, #ff9500 35%, #ff9500 70%, #ff3b30 82%, #ff3b30 100%); }
+        .trend-bar-marker { position: absolute; top: -5px; width: 3px; height: 20px; background: #fff; border: 1px solid #333; border-radius: 2px; transform: translateX(-50%); transition: left 0.5s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+        .deviation-value-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+        .deviation-current { font-size: 16px; font-weight: 700; }
+        .deviation-bbi { font-size: 12px; color: var(--text-tertiary); }
+        .atr-info { font-size: 11px; color: var(--text-tertiary); }
+
+        /* ===== 回测区 ===== */
+        .backtest-card { border-left: 4px solid var(--accent-purple); }
+        .backtest-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .backtest-title { font-size: 14px; font-weight: 600; }
+        .backtest-btn { padding: 6px 14px; border-radius: 12px; background: var(--accent-purple); color: #fff; font-size: 12px; font-weight: 600; border: none; cursor: pointer; }
+        .backtest-btn:active { transform: scale(0.97); }
+        .backtest-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
+        .backtest-stat { background: var(--bg-secondary); border-radius: 8px; padding: 12px; text-align: center; }
+        .backtest-stat-label { font-size: 11px; color: var(--text-tertiary); margin-bottom: 4px; }
+        .backtest-stat-value { font-size: 18px; font-weight: 700; }
+        .backtest-trades { max-height: 200px; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 10px; }
+        .backtest-trade-item { display: flex; justify-content: space-between; font-size: 11px; padding: 5px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .backtest-trade-item:last-child { border-bottom: none; }
+        .trade-buy { color: var(--accent-green); font-weight: 600; }
+        .trade-sell { color: var(--accent-red); font-weight: 600; }
+        .trade-stoploss { color: var(--accent-purple); font-weight: 600; }
+        .backtest-empty { text-align: center; color: var(--text-tertiary); font-size: 12px; padding: 20px; }
+
+        /* ===== 市场环境 ===== */
+        .market-filter { background: rgba(255,149,0,0.06); border: 1px solid rgba(255,149,0,0.2); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+        .market-filter-title { font-size: 11px; color: var(--accent-orange); margin-bottom: 8px; font-weight: 600; }
+        .market-filter-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+
+        /* ===== 动态阈值 ===== */
+        .dynamic-threshold { background: rgba(0,122,255,0.06); border: 1px solid rgba(0,122,255,0.15); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+        .dynamic-threshold-title { font-size: 11px; color: var(--accent-blue); margin-bottom: 8px; font-weight: 600; }
+        .threshold-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+        .threshold-item { background: var(--bg-primary); border-radius: 6px; padding: 8px; text-align: center; }
+        .threshold-label { font-size: 10px; color: var(--text-tertiary); }
+        .threshold-value { font-size: 13px; font-weight: 700; margin-top: 2px; }
+
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: var(--text-tertiary); }
+        .footer-link { color: var(--accent-blue); text-decoration: none; }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>工业富联 (601138)</h1>
+        <div class="header-sub">BBI量化策略监控看板</div>
+        <div>
+            <div class="status" id="statusIndicator">加载中...</div>
+            <span class="version-badge">v2.0 优化版</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 股价 -->
+        <div class="card price-card" id="card-price">
+            <div class="stock-name">工业富联</div>
+            <div class="stock-code">股票代码: 601138</div>
+            <div class="current-price" id="currentPrice">--.--</div>
+            <div class="price-change price-up" id="priceChange">--%</div>
+            <div class="info-grid">
+                <div><div class="info-label">涨跌额</div><div class="info-value" id="changeAmount">--</div></div>
+                <div><div class="info-label">昨收</div><div class="info-value" id="prevClose">--</div></div>
+                <div><div class="info-label">换手率</div><div class="info-value" id="turnoverRate">--</div></div>
+                <div><div class="info-label">成交量</div><div class="info-value" id="volume">--</div></div>
+                <div><div class="info-label">成交额</div><div class="info-value" id="amount">--</div></div>
+                <div><div class="info-label">振幅</div><div class="info-value" id="amplitude">--</div></div>
+            </div>
+        </div>
+
+        <!-- K线图 -->
+        <div class="card" id="card-kline">
+            <div class="card-title">K线走势图（含BBI线）</div>
+            <div id="chart-container">
+                <canvas id="klineCanvas" width="400" height="160" style="display:block;width:100%;height:160px"></canvas>
+                <canvas id="volumeCanvas" width="400" height="60" style="display:block;width:100%;height:60px;margin-top:4px"></canvas>
+            </div>
+        </div>
+
+        <!-- 技术指标 -->
+        <div class="card" id="card-indicators">
+            <div class="card-title">技术指标</div>
+            <div class="indicator-grid">
+                <div class="indicator-box">
+                    <div class="indicator-name">MACD</div>
+                    <div class="indicator-row"><span class="indicator-label">DIF</span><span class="indicator-value" id="macd-dif">--</span></div>
+                    <div class="indicator-row"><span class="indicator-label">DEA</span><span class="indicator-value" id="macd-dea">--</span></div>
+                    <div class="indicator-row"><span class="indicator-label">MACD</span><span class="indicator-value" id="macd-bar">--</span></div>
+                </div>
+                <div class="indicator-box">
+                    <div class="indicator-name">KDJ</div>
+                    <div class="indicator-row"><span class="indicator-label">K值</span><span class="indicator-value" id="kdj-k">--</span></div>
+                    <div class="indicator-row"><span class="indicator-label">D值</span><span class="indicator-value" id="kdj-d">--</span></div>
+                    <div class="indicator-row"><span class="indicator-label">J值</span><span class="indicator-value" id="kdj-j">--</span></div>
+                </div>
+                <div class="indicator-box">
+                    <div class="indicator-name">BOLL</div>
+                    <div class="indicator-row"><span class="indicator-label">上轨</span><span class="indicator-value" id="boll-up">--</span></div>
+                    <div class="indicator-row"><span class="indicator-label">中轨</span><span class="indicator-value" id="boll-mid">--</span></div>
+                    <div class="indicator-row"><span class="indicator-label">下轨</span><span class="indicator-value" id="boll-down">--</span></div>
+                </div>
+                <div class="indicator-box">
+                    <div class="indicator-name">BBI多空</div>
+                    <div class="indicator-row"><span class="indicator-label">BBI</span><span class="indicator-value" id="bbi-value">--</span></div>
+                    <div class="indicator-row"><span class="indicator-label">ATR(14)</span><span class="indicator-value" id="atr-value">--</span></div>
+                    <div class="indicator-row"><span class="indicator-label">波动率</span><span class="indicator-value" id="atr-pct">--</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 量化策略主板块 -->
+        <div class="card strategy-card" id="card-strategy">
+            <div class="strategy-header">
+                <div class="strategy-title">📊 BBI量化策略 v2.0</div>
+                <div class="strategy-status" id="strategyStatus">实时监控</div>
+            </div>
+
+            <!-- 主信号 -->
+            <div class="strategy-main-signal signal-default" id="strategyMainSignal">
+                <div class="signal-action-text" id="strategyAction">分析中...</div>
+                <div class="signal-reason" id="strategyReason">等待数据</div>
+                <div id="signalStrengthBadge"></div>
+            </div>
+
+            <!-- 核心指标 -->
+            <div class="strategy-indicators">
+                <div class="strategy-indicator">
+                    <div class="strategy-indicator-label">偏离率</div>
+                    <div class="strategy-indicator-value" id="strategyDeviation">--</div>
+                    <div class="strategy-indicator-sub" id="strategyDeviationDynamic">动态阈值计算中</div>
+                </div>
+                <div class="strategy-indicator">
+                    <div class="strategy-indicator-label">BBI</div>
+                    <div class="strategy-indicator-value" id="strategyBbi">--</div>
+                    <div class="strategy-indicator-sub" id="strategyBbiTrend">多空线</div>
+                </div>
+                <div class="strategy-indicator">
+                    <div class="strategy-indicator-label">MACD柱</div>
+                    <div class="strategy-indicator-value" id="strategyMacd">--</div>
+                    <div class="strategy-indicator-sub" id="strategyMacdSub">底背离检测</div>
+                </div>
+                <div class="strategy-indicator">
+                    <div class="strategy-indicator-label">量能</div>
+                    <div class="strategy-indicator-value" id="strategyVolume">--</div>
+                    <div class="strategy-indicator-sub" id="strategyVolumeSub">MA5 vs MA10</div>
+                </div>
+            </div>
+
+            <!-- 动态阈值 -->
+            <div class="dynamic-threshold">
+                <div class="dynamic-threshold-title">⚡ 动态阈值（ATR自适应）</div>
+                <div class="threshold-row">
+                    <div class="threshold-item">
+                        <div class="threshold-label">强买入阈值</div>
+                        <div class="threshold-value" id="dynBuyStrong" style="color:var(--accent-green)">--</div>
+                    </div>
+                    <div class="threshold-item">
+                        <div class="threshold-label">弱买入阈值</div>
+                        <div class="threshold-value" id="dynBuyWeak" style="color:#30d158">--</div>
+                    </div>
+                    <div class="threshold-item">
+                        <div class="threshold-label">减仓阈值</div>
+                        <div class="threshold-value" id="dynSellLight" style="color:var(--accent-orange)">--</div>
+                    </div>
+                    <div class="threshold-item">
+                        <div class="threshold-label">清仓阈值</div>
+                        <div class="threshold-value" id="dynSellFull" style="color:var(--accent-red)">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 条件状态 -->
+            <div class="condition-section">
+                <div class="condition-list">
+                    <div class="condition-title">🔴 强买入四要素（需同时满足）</div>
+                    <div class="condition-item">
+                        <span class="condition-name">① 偏离率 &lt; 动态阈值</span>
+                        <span class="condition-status condition-off" id="condDeviation1">--</span>
+                    </div>
+                    <div class="condition-item">
+                        <span class="condition-name">② 缩量+量分位 &lt;20%</span>
+                        <span class="condition-status condition-off" id="condVolume">--</span>
+                    </div>
+                    <div class="condition-item">
+                        <span class="condition-name">③ MACD止跌/底背离</span>
+                        <span class="condition-status condition-off" id="condMacd">--</span>
+                    </div>
+                    <div class="condition-item">
+                        <span class="condition-name">④ BBI趋势向上</span>
+                        <span class="condition-status condition-off" id="condTrend">--</span>
+                    </div>
+                </div>
+                <div class="condition-list">
+                    <div class="condition-title">🟡 弱买入要素（满足1项即可，配合偏离率）</div>
+                    <div class="condition-item">
+                        <span class="condition-name">缩量 OR MACD止跌 OR BBI向上</span>
+                        <span class="condition-status condition-off" id="condWeakBuy">--</span>
+                    </div>
+                    <div class="condition-item">
+                        <span class="condition-name">偏离率 &lt; -12%（基础阈值）</span>
+                        <span class="condition-status condition-off" id="condWeakDev">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 止损规则 -->
+            <div class="stoploss-section">
+                <div class="stoploss-title">🛡️ 止损监控</div>
+                <div class="stoploss-item">
+                    <span class="stoploss-label">偏离率 &lt;-30%</span>
+                    <span class="stoploss-value" id="stopLoss30">止损50%</span>
+                </div>
+                <div class="stoploss-item">
+                    <span class="stoploss-label">偏离率 &lt;-35%</span>
+                    <span class="stoploss-value" id="stopLoss35">清仓止损</span>
+                </div>
+                <div class="stoploss-item">
+                    <span class="stoploss-label">BBI连续下跌</span>
+                    <span class="stoploss-value" id="stopLossBBI">止损30%</span>
+                </div>
+                <div class="stoploss-item">
+                    <span class="stoploss-label">MACD破位</span>
+                    <span class="stoploss-value" id="stopLossMACD">止损20%</span>
+                </div>
+            </div>
+
+            <!-- 仓位管理 -->
+            <div class="position-section">
+                <div class="position-title">💼 仓位参考（单股≤总资金50%）</div>
+                <div class="position-grid">
+                    <div class="position-item">
+                        <div class="position-label">轻仓</div>
+                        <div class="position-value" style="color:var(--accent-green)">10%</div>
+                    </div>
+                    <div class="position-item">
+                        <div class="position-label">建仓</div>
+                        <div class="position-value" style="color:var(--accent-green)">20%</div>
+                    </div>
+                    <div class="position-item">
+                        <div class="position-label">加仓</div>
+                        <div class="position-value" style="color:var(--accent-orange)">50%</div>
+                    </div>
+                    <div class="position-item">
+                        <div class="position-label">重仓</div>
+                        <div class="position-value" style="color:var(--accent-red)">80%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 偏离度趋势条 -->
+            <div class="deviation-section">
+                <div class="deviation-labels">
+                    <span id="labelBuyStrong">-24% 重仓</span>
+                    <span>-12% | +18% 持有</span>
+                    <span id="labelSellFull">+24% 清仓</span>
+                </div>
+                <div class="trend-bar">
+                    <div class="trend-bar-fill" id="trendBarFill"></div>
+                    <div class="trend-bar-marker" id="trendMarker" style="left: 50%;"></div>
+                </div>
+                <div class="deviation-value-row">
+                    <div>
+                        <span class="deviation-current" id="trendPosition">偏离度: --</span>
+                    </div>
+                    <div class="atr-info" id="atrInfo">ATR: --</div>
+                    <div class="deviation-bbi" id="bbiInfo">BBI: --</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 回测模块 -->
+        <div class="card backtest-card" id="card-backtest">
+            <div class="backtest-header">
+                <div class="backtest-title">📈 历史回测</div>
+                <button class="backtest-btn" id="runBacktest" onclick="runBacktest()">运行回测</button>
+            </div>
+            <div class="backtest-stats" id="backtestStats" style="display:none">
+                <div class="backtest-stat">
+                    <div class="backtest-stat-label">总收益率</div>
+                    <div class="backtest-stat-value" id="bt-return">--</div>
+                </div>
+                <div class="backtest-stat">
+                    <div class="backtest-stat-label">交易次数</div>
+                    <div class="backtest-stat-value" id="bt-trades">--</div>
+                </div>
+                <div class="backtest-stat">
+                    <div class="backtest-stat-label">胜率</div>
+                    <div class="backtest-stat-value" id="bt-winrate">--</div>
+                </div>
+                <div class="backtest-stat">
+                    <div class="backtest-stat-label">最大回撤</div>
+                    <div class="backtest-stat-value" id="bt-drawdown">--</div>
+                </div>
+            </div>
+            <div class="backtest-trades" id="backtestTrades">
+                <div class="backtest-empty">点击「运行回测」查看历史信号绩效</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div>最后更新: <span id="lastUpdate">--</span></div>
+            <div style="margin-top:4px">数据来源: <span id="dataSource">演示模式</span></div>
+            <div style="margin-top:4px;font-size:10px;color:#ccc">⚠️ 本工具仅供学习研究，不构成投资建议</div>
+        </div>
+    </div>
+
+<script>
+// ==========================================
+//   strategy-core.js (内联版)
+//   BBI量化策略核心逻辑 v2.0
+// ==========================================
+
+let klineData = [];
+
+// ===== 工具函数 =====
+function log(msg) { console.log('[Strategy v2]', msg); }
+function formatNumber(num) {
+    if (num >= 100000000) return (num / 100000000).toFixed(2) + '亿';
+    if (num >= 10000) return (num / 10000).toFixed(2) + '万';
+    return num.toFixed(0);
+}
+
+// ===== 指标计算 =====
+function calculateEMA(prices, period) {
+    if (prices.length < period) return prices;
+    const k = 2 / (period + 1);
+    let ema = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
+    const result = Array(period - 1).fill(null).concat([ema]);
+    for (let i = period; i < prices.length; i++) {
+        ema = prices[i] * k + ema * (1 - k);
+        result.push(ema);
+    }
+    return result;
+}
+
+function calculateSMA(prices, period) {
+    const result = [];
+    for (let i = 0; i < prices.length; i++) {
+        if (i < period - 1) result.push(null);
+        else {
+            const sum = prices.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
+            result.push(sum / period);
+        }
+    }
+    return result;
+}
+
+function calculateMACD(prices) {
+    const ema12 = calculateEMA(prices, 12);
+    const ema26 = calculateEMA(prices, 26);
+    const dif = ema12.map((v, i) => (v != null && ema26[i] != null) ? v - ema26[i] : null);
+    const difClean = dif.filter(v => v !== null);
+    const dea = calculateEMA(difClean, 9);
+    let deaIdx = 0;
+    const macdArr = dif.map(v => {
+        if (v === null) return null;
+        const result = (v - (dea[deaIdx] || 0)) * 2;
+        if (deaIdx < dea.length - 1) deaIdx++;
+        return result;
+    });
+    return {
+        dif: dif[dif.length - 1] || 0,
+        dea: dea[dea.length - 1] || 0,
+        macd: macdArr[macdArr.length - 1] || 0,
+        macdArr: macdArr
+    };
+}
+
+function calculateKDJ(prices, highs, lows, period = 9) {
+    const rsv = [];
+    for (let i = period - 1; i < prices.length; i++) {
+        const high = Math.max(...highs.slice(i - period + 1, i + 1));
+        const low = Math.min(...lows.slice(i - period + 1, i + 1));
+        rsv.push(high === low ? 50 : (prices[i] - low) / (high - low) * 100);
+    }
+    if (rsv.length === 0) return { k: 50, d: 50, j: 50 };
+    let k = 50, d = 50;
+    for (let i = 0; i < rsv.length; i++) {
+        k = (2/3) * k + (1/3) * rsv[i];
+        d = (2/3) * d + (1/3) * k;
+    }
+    return { k, d, j: 3 * k - 2 * d };
+}
+
+function calculateBOLL(prices, period = 20) {
+    if (prices.length < period) return { upper: 0, middle: 0, lower: 0 };
+    const sma = calculateSMA(prices, period);
+    const lastSMA = sma[sma.length - 1];
+    const recentPrices = prices.slice(-period);
+    const variance = recentPrices.reduce((sum, p) => sum + Math.pow(p - lastSMA, 2), 0) / period;
+    const stdDev = Math.sqrt(variance);
+    return { upper: lastSMA + 2 * stdDev, middle: lastSMA, lower: lastSMA - 2 * stdDev };
+}
+
+function calculateBBI(prices) {
+    if (prices.length < 24) return prices[prices.length - 1] || 0;
+    const ma3 = calculateSMA(prices, 3);
+    const ma6 = calculateSMA(prices, 6);
+    const ma12 = calculateSMA(prices, 12);
+    const ma24 = calculateSMA(prices, 24);
+    return (ma3[ma3.length-1] + ma6[ma6.length-1] + ma12[ma12.length-1] + ma24[ma24.length-1]) / 4;
+}
+
+// 计算完整BBI序列
+function calculateBBIArray(closes) {
+    const bbiArr = [];
+    for (let i = 0; i < closes.length; i++) {
+        if (i < 23) { bbiArr.push(null); continue; }
+        const slice = closes.slice(Math.max(0, i - 23), i + 1);
+        const ma3 = slice.slice(-3).reduce((a, b) => a + b, 0) / 3;
+        const ma6 = slice.slice(-6).reduce((a, b) => a + b, 0) / 6;
+        const ma12 = slice.slice(-12).reduce((a, b) => a + b, 0) / 12;
+        const ma24 = slice.slice(-24).reduce((a, b) => a + b, 0) / 24;
+        bbiArr.push((ma3 + ma6 + ma12 + ma24) / 4);
+    }
+    return bbiArr;
+}
+
+// ATR计算
+function calculateATR(highs, lows, closes, period = 14) {
+    if (closes.length < period + 1) return closes[closes.length-1] * 0.02;
+    const trs = [];
+    for (let i = 1; i < highs.length; i++) {
+        const tr = Math.max(
+            highs[i] - lows[i],
+            Math.abs(highs[i] - closes[i-1]),
+            Math.abs(lows[i] - closes[i-1])
+        );
+        trs.push(tr);
+    }
+    const smaTrs = calculateSMA(trs, period);
+    return smaTrs[smaTrs.length - 1] || 0;
+}
+
+// 成交量分位数
+function getQuantile(arr, value) {
+    const valid = arr.filter(v => v != null && !isNaN(v));
+    if (valid.length === 0) return 0.5;
+    const sorted = [...valid].sort((a, b) => a - b);
+    const idx = sorted.findIndex(v => v >= value);
+    return idx === -1 ? 1 : idx / sorted.length;
+}
+
+// ===== 优化后的MACD止跌/底背离判断 =====
+function isMacdBottomDivergence(closes, macdFullArr) {
+    if (closes.length < 5 || macdFullArr.length < 5) return { isBottom: false, isContinuous: false };
+    const n = closes.length;
+    const recentCloses = closes.slice(-5);
+    const recentMacds = macdFullArr.slice(-5).filter(v => v !== null);
+    if (recentMacds.length < 3) return { isBottom: false, isContinuous: false };
+
+    const minClose = Math.min(...recentCloses);
+    const curClose = closes[n - 1];
+    const minMacd = Math.min(...recentMacds);
+    const curMacd = recentMacds[recentMacds.length - 1];
+
+    // 价格创近期新低，但MACD未创新低 → 底背离
+    const isPriceLow = curClose <= minClose * 1.005;
+    const isMacdHigher = curMacd > minMacd + 0.001;
+    const isDivergence = isPriceLow && isMacdHigher;
+
+    // 连续2期MACD柱线上涨
+    const last = recentMacds.length;
+    const isContinuous = last >= 3 &&
+        recentMacds[last-1] > recentMacds[last-2] &&
+        recentMacds[last-2] > recentMacds[last-3];
+
+    return { isBottom: isDivergence || isContinuous, isContinuous };
+}
+
+// ===== 优化后的缩量判断 =====
+function isShrunkVolumeEnhanced(volumes) {
+    if (volumes.length < 10) return { isShrunk: false, quantile: 0.5, detail: '数据不足' };
+    const ma5arr = calculateSMA(volumes, 5);
+    const ma10arr = calculateSMA(volumes, 10);
+    const ma5 = ma5arr[ma5arr.length - 1];
+    const ma10 = ma10arr[ma10arr.length - 1];
+    const curVol = volumes[volumes.length - 1];
+    const last30 = volumes.slice(-30);
+    const quantile = getQuantile(last30, curVol);
+    const isMA = ma5 < ma10;
+    const isLowQuantile = quantile < 0.35; // 放宽至35%分位
+    const isShrunk = isMA && isLowQuantile;
+    return {
+        isShrunk,
+        isMA,
+        isLowQuantile,
+        quantile,
+        detail: `MA5/MA10: ${isMA ? '✓' : '✗'} 量分位: ${(quantile*100).toFixed(0)}%`
+    };
+}
+
+// ===== 内置历史K线数据（网络不可用时的兜底数据，已更新至2026-04-07）=====
+function useMockData() {
+    log('网络获取失败，使用内置历史K线数据');
+    const klineRaw = [
+        ['2025-12-31', 63.91, 61.72, 64.21, 61.53, 1564104],
+        ['2026-01-05', 62.96, 63.34, 63.95, 62.38, 1593406],
+        ['2026-01-06', 63.34, 63.72, 64.64, 62.53, 1708615],
+        ['2026-01-07', 63.08, 62.82, 64.33, 62.27, 1657003],
+        ['2026-01-08', 62.98, 61.00, 63.14, 60.74, 1859715],
+        ['2026-01-09', 60.17, 61.15, 61.42, 59.72, 1565321],
+        ['2026-01-12', 61.16, 60.60, 61.37, 59.42, 2110816],
+        ['2026-01-13', 60.45, 59.10, 61.40, 58.76, 1930316],
+        ['2026-01-14', 59.77, 59.67, 60.16, 59.04, 1562402],
+        ['2026-01-15', 58.97, 60.46, 60.67, 58.56, 1426215],
+        ['2026-01-16', 61.20, 63.00, 64.00, 61.20, 2625963],
+        ['2026-01-19', 62.11, 60.90, 62.18, 60.71, 1883890],
+        ['2026-01-20', 60.30, 59.67, 60.45, 58.80, 1395115],
+        ['2026-01-21', 58.71, 61.56, 61.79, 58.70, 1734936],
+        ['2026-01-22', 61.69, 62.75, 63.00, 60.79, 2218563],
+        ['2026-01-23', 62.00, 60.11, 62.05, 60.08, 2032992],
+        ['2026-01-26', 60.09, 59.26, 60.09, 59.01, 1178431],
+        ['2026-01-27', 59.51, 60.97, 62.00, 58.70, 2123445],
+        ['2026-01-28', 62.30, 60.69, 62.64, 60.11, 1719901],
+        ['2026-01-29', 60.68, 57.60, 60.88, 56.88, 3245544],
+        ['2026-01-30', 57.00, 57.70, 58.00, 55.62, 1731944],
+        ['2026-02-02', 56.80, 55.68, 57.50, 55.67, 1563503],
+        ['2026-02-03', 56.30, 55.75, 56.42, 54.03, 1675103],
+        ['2026-02-04', 54.69, 53.41, 54.78, 52.60, 1890656],
+        ['2026-02-05', 52.27, 53.88, 54.32, 52.20, 1443856],
+        ['2026-02-06', 53.00, 54.40, 55.48, 52.41, 1377722],
+        ['2026-02-09', 56.20, 55.52, 56.50, 55.31, 1400986],
+        ['2026-02-10', 55.73, 56.07, 56.99, 55.58, 1113030],
+        ['2026-02-11', 55.60, 55.20, 56.12, 55.01,  750772],
+        ['2026-02-12', 55.35, 55.33, 55.96, 54.52,  834276],
+        ['2026-02-13', 54.45, 54.75, 55.75, 54.20,  687646],
+        ['2026-02-24', 55.41, 55.38, 56.09, 54.90, 1075010],
+        ['2026-02-25', 55.81, 57.39, 57.58, 55.70, 1699412],
+        ['2026-02-26', 57.40, 57.95, 58.54, 56.30, 1627260],
+        ['2026-02-27', 56.30, 55.70, 56.44, 55.10, 1701812],
+        ['2026-03-02', 54.00, 55.53, 56.00, 53.84, 1184120],
+        ['2026-03-03', 55.84, 54.88, 57.80, 54.88, 1932188],
+        ['2026-03-04', 53.98, 53.76, 55.16, 53.51, 1075282],
+        ['2026-03-05', 54.79, 55.10, 56.26, 54.33, 1362380],
+        ['2026-03-06', 54.80, 54.33, 54.90, 53.80,  869298],
+        ['2026-03-09', 52.76, 52.79, 52.94, 51.21, 1694579],
+        ['2026-03-10', 53.63, 54.36, 54.38, 53.40, 1173851],
+        ['2026-03-11', 54.70, 53.89, 54.99, 53.60, 1220073],
+        ['2026-03-12', 53.90, 52.54, 54.78, 52.22, 1410061],
+        ['2026-03-13', 52.02, 52.49, 53.17, 52.01,  941798],
+        ['2026-03-16', 52.18, 52.70, 52.74, 51.50, 1010045],
+        ['2026-03-17', 52.99, 50.90, 53.18, 50.87, 1319376],
+        ['2026-03-18', 51.30, 52.06, 52.14, 50.85, 1174776],
+        ['2026-03-19', 51.00, 50.46, 51.29, 50.20, 1056018],
+        ['2026-03-20', 50.98, 50.30, 52.45, 50.21, 1544521],
+        ['2026-03-23', 48.95, 47.60, 49.09, 47.35, 1370951],
+        ['2026-03-24', 48.57, 48.84, 48.88, 47.49, 1107629],
+        ['2026-03-25', 49.39, 50.31, 51.00, 49.02, 1264703],
+        ['2026-03-26', 50.00, 49.74, 51.50, 49.57, 1072890],
+        ['2026-03-27', 48.63, 49.53, 49.90, 48.40,  784645],
+        ['2026-03-30', 48.46, 49.27, 49.29, 48.33,  662624],
+        ['2026-03-31', 49.00, 51.46, 52.85, 48.53, 2386740],
+        ['2026-04-01', 53.00, 53.32, 53.50, 51.47, 2154300],
+        ['2026-04-02', 52.66, 52.00, 54.45, 51.75, 1571751],
+        ['2026-04-03', 52.60, 52.18, 53.18, 52.00, 1045401],
+        ['2026-04-07', 51.50, 50.80, 52.10, 50.55, 1320000]
+    ];
+
+    klineData = klineRaw.map(k => ({
+        time: k[0], open: k[1], close: k[2], high: k[3], low: k[4], volume: k[5]
+    }));
+
+    // 更新股价显示（取最新一根K线）
+    const last = klineData[klineData.length - 1];
+    const prev = klineData[klineData.length - 2];
+    const mockClose    = last.close;
+    const mockPrevClose = prev ? prev.close : last.open;
+    const change        = mockClose - mockPrevClose;
+    const changePercent = (change / mockPrevClose * 100).toFixed(2);
+    document.getElementById('currentPrice').textContent = mockClose.toFixed(2);
+    document.getElementById('currentPrice').className   = 'current-price ' + (change >= 0 ? 'price-up' : 'price-down');
+    document.getElementById('priceChange').textContent  = (change >= 0 ? '+' : '') + changePercent + '%';
+    document.getElementById('priceChange').className    = 'price-change ' + (change >= 0 ? 'price-up' : 'price-down');
+    document.getElementById('changeAmount').textContent = (change >= 0 ? '+' : '') + change.toFixed(2);
+    document.getElementById('prevClose').textContent    = mockPrevClose.toFixed(2);
+    document.getElementById('turnoverRate').textContent = '--';
+    document.getElementById('volume').textContent       = formatNumber(last.volume);
+    document.getElementById('amount').textContent       = '估算中';
+    document.getElementById('amplitude').textContent    = (((last.high - last.low) / mockPrevClose) * 100).toFixed(2) + '%';
+
+    log('内置K线数据: ' + klineData.length + '条');
+    drawKlineChart(klineData);
+    calculateAllIndicators();
+    document.getElementById('statusIndicator').textContent = '离线模式';
+    document.getElementById('dataSource').textContent = '内置数据';
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('zh-CN');
+}
+
+// ===== 计算所有指标 =====
+function calculateAllIndicators() {
+    if (klineData.length < 5) return;
+    const closes = klineData.map(k => k.close);
+    const highs = klineData.map(k => k.high);
+    const lows = klineData.map(k => k.low);
+
+    const macd = calculateMACD(closes);
+    document.getElementById('macd-dif').textContent = macd.dif.toFixed(3);
+    document.getElementById('macd-dea').textContent = macd.dea.toFixed(3);
+    const macdBar = document.getElementById('macd-bar');
+    macdBar.textContent = macd.macd.toFixed(3);
+    macdBar.style.color = macd.macd >= 0 ? '#ff3b30' : '#34c759';
+
+    const kdj = calculateKDJ(closes, highs, lows);
+    document.getElementById('kdj-k').textContent = kdj.k.toFixed(1);
+    document.getElementById('kdj-d').textContent = kdj.d.toFixed(1);
+    document.getElementById('kdj-j').textContent = kdj.j.toFixed(1);
+
+    const boll = calculateBOLL(closes);
+    document.getElementById('boll-up').textContent = boll.upper.toFixed(2);
+    document.getElementById('boll-mid').textContent = boll.middle.toFixed(2);
+    document.getElementById('boll-down').textContent = boll.lower.toFixed(2);
+
+    const bbi = calculateBBI(closes);
+    document.getElementById('bbi-value').textContent = bbi.toFixed(2);
+
+    const atr = calculateATR(highs, lows, closes, 14);
+    const atrPct = (atr / closes[closes.length-1] * 100);
+    document.getElementById('atr-value').textContent = atr.toFixed(3);
+    document.getElementById('atr-pct').textContent = atrPct.toFixed(2) + '%';
+
+    calculateBBIStrategy();
+    log('指标计算完成');
+}
+
+// ===== BBI量化策略 v2.0 =====
+function calculateBBIStrategy() {
+    if (klineData.length < 25) return;
+
+    const closes = klineData.map(k => k.close);
+    const volumes = klineData.map(k => k.volume);
+    const highs = klineData.map(k => k.high);
+    const lows = klineData.map(k => k.low);
+
+    const bbi = calculateBBI(closes);
+    const currentPrice = closes[closes.length - 1];
+    const deviation = (currentPrice - bbi) / bbi * 100;
+
+    // ATR动态阈值
+    const atr = calculateATR(highs, lows, closes, 14);
+    const atrFactor = 1 + (atr / currentPrice);
+    const dynBuyStrong = -12 * atrFactor;
+    const dynBuyHeavy = -18 * atrFactor;
+    const dynBuyFull = -24 * atrFactor;
+    const dynSellLight = 18 * atrFactor;
+    const dynSellFull = 24 * atrFactor;
+
+    // 更新动态阈值显示
+    document.getElementById('dynBuyStrong').textContent = dynBuyStrong.toFixed(1) + '%';
+    document.getElementById('dynBuyWeak').textContent = (dynBuyStrong * 0.75).toFixed(1) + '%';
+    document.getElementById('dynSellLight').textContent = dynSellLight.toFixed(1) + '%';
+    document.getElementById('dynSellFull').textContent = dynSellFull.toFixed(1) + '%';
+    document.getElementById('labelBuyStrong').textContent = dynBuyFull.toFixed(1) + '% 重仓';
+    document.getElementById('labelSellFull').textContent = '+' + dynSellFull.toFixed(1) + '% 清仓';
+
+    // 优化后的缩量判断
+    const volInfo = isShrunkVolumeEnhanced(volumes);
+
+    // 优化后的MACD止跌/底背离
+    const macdResult = calculateMACD(closes);
+    const macdArrFull = macdResult.macdArr;
+    const macdDivInfo = isMacdBottomDivergence(closes, macdArrFull);
+    const prevMacd = (() => {
+        if (klineData.length <= 1) return macdResult.macd;
+        const prevCloses = klineData.slice(0, -1).map(k => k.close);
+        return calculateMACD(prevCloses).macd;
+    })();
+    const isMacdRising = macdResult.macd > prevMacd;
+    const isMacdBottom = isMacdRising || macdDivInfo.isBottom;
+
+    // BBI趋势（连续3期）
+    const bbiArr = calculateBBIArray(closes);
+    const prevBbi = bbiArr[bbiArr.length - 2] || bbi;
+    const prevPrevBbi = bbiArr[bbiArr.length - 3] || prevBbi;
+    const isTrendUp = bbi > prevBbi;
+    const isBBIFalling3 = bbi < prevBbi && prevBbi < prevPrevBbi; // BBI连续下跌
+
+    // 四大核心条件（动态阈值版）
+    const cond1 = deviation < dynBuyStrong;
+    const cond2 = volInfo.isShrunk;
+    const cond3 = isMacdBottom;
+    const cond4 = isTrendUp;
+    const canBuy = cond1 && cond2 && cond3 && cond4;
+
+    // 弱买入：偏离率<-12%（固定）+ 任意一项辅助条件
+    const weakBase = deviation < -12;
+    const weakAux = volInfo.isMA || isMacdRising || isTrendUp;
+    const canWeakBuy = !canBuy && weakBase && weakAux;
+
+    // 止损条件
+    const stopLoss30 = deviation < -30;
+    const stopLoss35 = deviation < -35;
+    const stopLossBBI = isBBIFalling3;
+    const stopLossMACD = macdResult.macd < ((() => {
+        if (macdArrFull.length < 5) return macdResult.macd;
+        const recent5 = macdArrFull.filter(v => v !== null).slice(-5);
+        return Math.min(...recent5);
+    })()) + 0.001;
+
+    // 更新条件UI
+    document.getElementById('condDeviation1').textContent = cond1 ? '✓ 满足' : '✗ ' + deviation.toFixed(1) + '%';
+    document.getElementById('condDeviation1').className = 'condition-status ' + (cond1 ? 'condition-on' : 'condition-off');
+
+    document.getElementById('condVolume').textContent = cond2 ? '✓ 缩量' : ('✗ ' + (volInfo.quantile * 100).toFixed(0) + '%分位');
+    document.getElementById('condVolume').className = 'condition-status ' + (cond2 ? 'condition-on' : 'condition-off');
+
+    document.getElementById('condMacd').textContent = cond3 ? (macdDivInfo.isBottom ? '✓ 底背离' : '✓ 止跌') : '✗ 下行';
+    document.getElementById('condMacd').className = 'condition-status ' + (cond3 ? 'condition-on' : 'condition-off');
+
+    document.getElementById('condTrend').textContent = cond4 ? '✓ 向上' : '✗ 向下';
+    document.getElementById('condTrend').className = 'condition-status ' + (cond4 ? 'condition-on' : 'condition-off');
+
+    document.getElementById('condWeakBuy').textContent = weakAux ? '✓ 有辅助条件' : '✗ 无';
+    document.getElementById('condWeakBuy').className = 'condition-status ' + (weakAux ? 'condition-on' : 'condition-off');
+
+    document.getElementById('condWeakDev').textContent = weakBase ? '✓ <-12%' : '✗ ' + deviation.toFixed(1) + '%';
+    document.getElementById('condWeakDev').className = 'condition-status ' + (weakBase ? 'condition-on' : 'condition-off');
+
+    // 止损状态
+    document.getElementById('stopLoss30').style.color = stopLoss30 ? '#af52de' : '#8e8e93';
+    document.getElementById('stopLoss30').textContent = stopLoss30 ? '⚠️ 触发！止损50%' : '止损50% (偏离<-30%)';
+    document.getElementById('stopLoss35').style.color = stopLoss35 ? '#ff3b30' : '#8e8e93';
+    document.getElementById('stopLoss35').textContent = stopLoss35 ? '🚨 触发！清仓止损' : '清仓止损 (偏离<-35%)';
+    document.getElementById('stopLossBBI').style.color = stopLossBBI ? '#af52de' : '#8e8e93';
+    document.getElementById('stopLossBBI').textContent = stopLossBBI ? '⚠️ BBI连跌，止损30%' : '止损30% (BBI连续下跌)';
+    document.getElementById('stopLossMACD').style.color = stopLossMACD ? '#ff9500' : '#8e8e93';
+    document.getElementById('stopLossMACD').textContent = stopLossMACD ? '⚠️ MACD破位，止损20%' : '止损20% (MACD破位)';
+
+    // 核心指标显示
+    document.getElementById('strategyDeviation').textContent = deviation.toFixed(2) + '%';
+    document.getElementById('strategyDeviation').style.color = deviation < dynBuyStrong ? '#34c759' : deviation > dynSellLight ? '#ff3b30' : '#ff9500';
+    document.getElementById('strategyDeviationDynamic').textContent = `动态阈值: ${dynBuyStrong.toFixed(1)}% / +${dynSellLight.toFixed(1)}%`;
+
+    document.getElementById('strategyBbi').textContent = bbi.toFixed(2);
+    document.getElementById('strategyBbiTrend').textContent = isTrendUp ? '↑ BBI趋势向上' : (isBBIFalling3 ? '↓↓↓ 连续下跌' : '↓ 趋势向下');
+
+    document.getElementById('strategyMacd').textContent = macdResult.macd.toFixed(3);
+    document.getElementById('strategyMacd').style.color = macdResult.macd >= 0 ? '#ff3b30' : '#34c759';
+    document.getElementById('strategyMacdSub').textContent = macdDivInfo.isBottom ? '底背离信号' : (isMacdRising ? '止跌信号' : '继续下行');
+
+    document.getElementById('strategyVolume').textContent = volInfo.isShrunk ? '缩量' : (volInfo.isMA ? '弱缩量' : '放量');
+    document.getElementById('strategyVolume').style.color = volInfo.isShrunk ? '#34c759' : (volInfo.isMA ? '#ff9500' : '#ff3b30');
+    document.getElementById('strategyVolumeSub').textContent = volInfo.detail;
+
+    // ATR & BBI信息
+    document.getElementById('atrInfo').textContent = 'ATR: ' + atr.toFixed(2);
+    document.getElementById('bbiInfo').textContent = 'BBI: ' + bbi.toFixed(2);
+
+    // 趋势条（使用动态阈值范围）
+    const barMin = dynBuyFull * 1.3;
+    const barMax = dynSellFull * 1.3;
+    const normalizedDev = Math.max(barMin, Math.min(barMax, deviation));
+    const position = ((normalizedDev - barMin) / (barMax - barMin)) * 100;
+    document.getElementById('trendMarker').style.left = position + '%';
+    document.getElementById('trendPosition').textContent = deviation.toFixed(2) + '%';
+    document.getElementById('trendPosition').style.color = deviation < dynBuyStrong ? '#34c759' : deviation > dynSellLight ? '#ff3b30' : '#ff9500';
+
+    // ===== 策略信号 =====
+    let action = '观望';
+    let reason = '等待买入信号触发';
+    let badgeClass = 'badge-wait';
+    let badgeText = '观望';
+
+    if (stopLoss35) {
+        action = '止损';
+        reason = '偏离率超-35%，建议清仓止损，保护本金';
+        badgeClass = 'badge-stop';
+        badgeText = '⚠️ 止损清仓';
+    } else if (stopLoss30) {
+        action = '止损';
+        reason = '偏离率超-30%，建议止损50%仓位';
+        badgeClass = 'badge-stop';
+        badgeText = '⚠️ 止损50%';
+    } else if (canBuy) {
+        if (deviation < dynBuyFull) { action = '重仓'; reason = `偏离率${deviation.toFixed(1)}%，强烈买入信号，建议重仓（80%仓位）`; badgeClass = 'badge-strong'; badgeText = '强信号·重仓80%'; }
+        else if (deviation < dynBuyHeavy) { action = '加仓'; reason = `偏离率${deviation.toFixed(1)}%，加仓机会，建议50%仓位`; badgeClass = 'badge-strong'; badgeText = '强信号·加仓50%'; }
+        else { action = '建仓'; reason = `偏离率${deviation.toFixed(1)}%，四要素满足，建议建仓20%`; badgeClass = 'badge-strong'; badgeText = '强信号·建仓20%'; }
+    } else if (canWeakBuy) {
+        action = '弱买入';
+        const metConds = [volInfo.isMA ? '缩量' : null, isMacdRising ? 'MACD止跌' : null, isTrendUp ? 'BBI向上' : null].filter(Boolean);
+        reason = `弱信号：满足[${metConds.join('+')}]，建议轻仓试探（10%仓位）`;
+        badgeClass = 'badge-weak';
+        badgeText = '弱信号·轻仓10%';
+    } else if (deviation >= dynBuyStrong && deviation <= dynSellLight) {
+        action = '持有';
+        reason = deviation < 0 ? '偏离度负区间，安心持有' :
+                 deviation < dynSellLight * 0.7 ? '偏离正常，持有待涨' :
+                 '接近止盈区间，注意减仓准备';
+        badgeClass = 'badge-hold';
+        badgeText = '持有观察';
+    } else if (deviation > dynSellFull) {
+        action = '清仓';
+        reason = `偏离率${deviation.toFixed(1)}%超+${dynSellFull.toFixed(1)}%，建议清仓70%锁定利润`;
+        badgeClass = 'badge-sell';
+        badgeText = '止盈·清仓70%';
+    } else if (deviation > dynSellLight) {
+        action = '减仓';
+        reason = `偏离率${deviation.toFixed(1)}%超+${dynSellLight.toFixed(1)}%，建议减仓30%锁定部分利润`;
+        badgeClass = 'badge-sell';
+        badgeText = '止盈·减仓30%';
+    } else {
+        if (deviation < dynBuyStrong) {
+            if (!volInfo.isMA) reason = '等待缩量确认';
+            else if (!isMacdRising) reason = '等待MACD止跌';
+            else if (!isTrendUp) reason = '等待BBI趋势转好';
+            else reason = '等待动态阈值满足';
+        }
+    }
+
+    const signalEl = document.getElementById('strategyMainSignal');
+    signalEl.className = 'strategy-main-signal signal-' + action;
+    document.getElementById('strategyAction').textContent = action;
+    document.getElementById('strategyReason').textContent = reason;
+    document.getElementById('signalStrengthBadge').innerHTML =
+        `<span class="signal-strength-badge ${badgeClass}">${badgeText}</span>`;
+
+    log(`策略信号: ${action} | 偏离率: ${deviation.toFixed(2)}% | 动态阈值: ${dynBuyStrong.toFixed(1)}%`);
+}
+
+// ===== 回测模块 =====
+function runBacktest() {
+    if (klineData.length < 30) {
+        alert('数据不足，无法回测');
+        return;
+    }
+    const btn = document.getElementById('runBacktest');
+    btn.textContent = '计算中...';
+    btn.disabled = true;
+
+    setTimeout(() => {
+        const result = backtestStrategy(klineData);
+        displayBacktestResult(result);
+        btn.textContent = '重新回测';
+        btn.disabled = false;
+    }, 100);
+}
+
+function backtestStrategy(data) {
+    const INIT_CASH = 100000;
+    let cash = INIT_CASH;
+    let position = 0;
+    let positionCost = 0;
+    const trades = [];
+    let maxValue = INIT_CASH;
+    let maxDrawdown = 0;
+
+    for (let i = 26; i < data.length; i++) {
+        const sliceData = data.slice(0, i + 1);
+        const closes = sliceData.map(k => k.close);
+        const highs = sliceData.map(k => k.high);
+        const lows = sliceData.map(k => k.low);
+        const volumes = sliceData.map(k => k.volume);
+        const price = data[i].close;
+        const time = data[i].time;
+
+        const bbi = calculateBBI(closes);
+        const deviation = (price - bbi) / bbi * 100;
+        const atr = calculateATR(highs, lows, closes, 14);
+        const atrFactor = 1 + (atr / price);
+        const dynBuyStrong = -12 * atrFactor;
+        const dynSellLight = 18 * atrFactor;
+        const dynSellFull = 24 * atrFactor;
+
+        const volInfo = isShrunkVolumeEnhanced(volumes);
+        const macdRes = calculateMACD(closes);
+        const bbiArr = calculateBBIArray(closes);
+        const prevBbi = bbiArr[bbiArr.length - 2] || bbi;
+        const isTrendUp = bbi > prevBbi;
+        const prevMacd = i > 1 ? (() => {
+            const pc = data.slice(0, i).map(k => k.close);
+            return calculateMACD(pc).macd;
+        })() : macdRes.macd;
+        const isMacdRising = macdRes.macd > prevMacd;
+        const isMacdBottom = isMacdRising || isMacdBottomDivergence(closes, macdRes.macdArr).isBottom;
+
+        const canBuy = deviation < dynBuyStrong && volInfo.isShrunk && isMacdBottom && isTrendUp;
+        const canWeakBuy = !canBuy && deviation < -12 && (volInfo.isMA || isMacdRising || isTrendUp);
+
+        const stopLoss35 = deviation < -35;
+        const stopLoss30 = deviation < -30;
+
+        // 止损优先
+        if (position > 0 && stopLoss35) {
+            cash += position * price;
+            const pnl = ((price - positionCost) / positionCost * 100).toFixed(2);
+            trades.push({ time, action: '止损清仓', price, pnl: parseFloat(pnl), type: 'stoploss' });
+            position = 0; positionCost = 0;
+        } else if (position > 0 && stopLoss30) {
+            const sellQty = Math.floor(position * 0.5);
+            if (sellQty > 0) {
+                cash += sellQty * price;
+                const pnl = ((price - positionCost) / positionCost * 100).toFixed(2);
+                trades.push({ time, action: '止损50%', price, pnl: parseFloat(pnl), type: 'stoploss' });
+                position -= sellQty;
+            }
+        } else if (position > 0 && deviation > dynSellFull) {
+            const sellQty = Math.floor(position * 0.7);
+            if (sellQty > 0) {
+                cash += sellQty * price;
+                const pnl = ((price - positionCost) / positionCost * 100).toFixed(2);
+                trades.push({ time, action: '清仓70%', price, pnl: parseFloat(pnl), type: 'sell' });
+                position -= sellQty;
+            }
+        } else if (position > 0 && deviation > dynSellLight) {
+            const sellQty = Math.floor(position * 0.3);
+            if (sellQty > 0) {
+                cash += sellQty * price;
+                const pnl = ((price - positionCost) / positionCost * 100).toFixed(2);
+                trades.push({ time, action: '减仓30%', price, pnl: parseFloat(pnl), type: 'sell' });
+                position -= sellQty;
+            }
+        } else if (canBuy && position === 0) {
+            const buyRatio = deviation < -24 * atrFactor ? 0.8 : deviation < -18 * atrFactor ? 0.5 : 0.2;
+            const qty = Math.floor(cash * buyRatio / price);
+            if (qty > 0) {
+                position = qty;
+                positionCost = price;
+                cash -= qty * price;
+                trades.push({ time, action: `强买入(${(buyRatio*100).toFixed(0)}%)`, price, pnl: 0, type: 'buy' });
+            }
+        } else if (canWeakBuy && position === 0) {
+            const qty = Math.floor(cash * 0.1 / price);
+            if (qty > 0) {
+                position = qty;
+                positionCost = price;
+                cash -= qty * price;
+                trades.push({ time, action: '弱买入(10%)', price, pnl: 0, type: 'buy' });
+            }
+        }
+
+        const curValue = cash + position * price;
+        if (curValue > maxValue) maxValue = curValue;
+        const dd = (maxValue - curValue) / maxValue * 100;
+        if (dd > maxDrawdown) maxDrawdown = dd;
+    }
+
+    // 平仓
+    if (position > 0) {
+        const price = data[data.length-1].close;
+        cash += position * price;
+        const pnl = ((price - positionCost) / positionCost * 100).toFixed(2);
+        trades.push({ time: data[data.length-1].time, action: '期末平仓', price, pnl: parseFloat(pnl), type: 'sell' });
+        position = 0;
+    }
+
+    const finalValue = cash;
+    const totalReturn = (finalValue - INIT_CASH) / INIT_CASH * 100;
+    const sellTrades = trades.filter(t => t.type === 'sell' || t.type === 'stoploss');
+    const winTrades = sellTrades.filter(t => t.pnl > 0);
+    const winRate = sellTrades.length > 0 ? winTrades.length / sellTrades.length * 100 : 0;
+
+    return { finalValue, totalReturn, trades, maxDrawdown, winRate, tradeCount: trades.length };
+}
+
+function displayBacktestResult(result) {
+    document.getElementById('backtestStats').style.display = 'grid';
+
+    const retEl = document.getElementById('bt-return');
+    retEl.textContent = result.totalReturn.toFixed(2) + '%';
+    retEl.style.color = result.totalReturn >= 0 ? '#ff3b30' : '#34c759';
+
+    document.getElementById('bt-trades').textContent = result.tradeCount + '次';
+    document.getElementById('bt-winrate').textContent = result.winRate.toFixed(1) + '%';
+
+    const ddEl = document.getElementById('bt-drawdown');
+    ddEl.textContent = result.maxDrawdown.toFixed(2) + '%';
+    ddEl.style.color = result.maxDrawdown > 15 ? '#ff3b30' : result.maxDrawdown > 8 ? '#ff9500' : '#34c759';
+
+    const tradesEl = document.getElementById('backtestTrades');
+    if (result.trades.length === 0) {
+        tradesEl.innerHTML = '<div class="backtest-empty">本段历史数据未产生交易信号</div>';
+        return;
+    }
+    tradesEl.innerHTML = result.trades.map(t => {
+        const cls = t.type === 'buy' ? 'trade-buy' : t.type === 'stoploss' ? 'trade-stoploss' : 'trade-sell';
+        const pnlStr = t.type !== 'buy' ? ` (${t.pnl >= 0 ? '+' : ''}${t.pnl}%)` : '';
+        return `<div class="backtest-trade-item">
+            <span class="${cls}">${t.action}</span>
+            <span>${t.time}</span>
+            <span>¥${t.price.toFixed(2)}${pnlStr}</span>
+        </div>`;
+    }).join('');
+}
+
+// ===== K线图绘制 =====
+function drawKlineChart(data) {
+    const chartData = data.slice(-30);
+    const klineCanvas = document.getElementById('klineCanvas');
+    const klineCtx = klineCanvas.getContext('2d');
+    const width = klineCanvas.width;
+    const height = klineCanvas.height;
+    klineCtx.clearRect(0, 0, width, height);
+
+    if (!chartData || chartData.length === 0) {
+        klineCtx.fillStyle = '#999';
+        klineCtx.font = '14px sans-serif';
+        klineCtx.textAlign = 'center';
+        klineCtx.fillText('暂无数据', width/2, height/2);
+        return;
+    }
+
+    const padding = 5;
+    const chartWidth = width - padding * 2;
+    const chartHeight = height - padding * 2;
+
+    let minPrice = Infinity, maxPrice = -Infinity;
+    chartData.forEach(k => { minPrice = Math.min(minPrice, k.low); maxPrice = Math.max(maxPrice, k.high); });
+    const priceRange = maxPrice - minPrice || 1;
+    minPrice -= priceRange * 0.05;
+    maxPrice += priceRange * 0.05;
+
+    const totalCandles = chartData.length;
+    const candleWidth = Math.floor(chartWidth / totalCandles) - 1;
+    const startX = padding + candleWidth / 2;
+
+    chartData.forEach((k, i) => {
+        const x = startX + i * (candleWidth + 1);
+        const isUp = k.close >= k.open;
+        const color = isUp ? '#ff3b30' : '#34c759';
+        const highY = padding + ((maxPrice - k.high) / (maxPrice - minPrice)) * chartHeight;
+        const lowY = padding + ((maxPrice - k.low) / (maxPrice - minPrice)) * chartHeight;
+        const openY = padding + ((maxPrice - k.open) / (maxPrice - minPrice)) * chartHeight;
+        const closeY = padding + ((maxPrice - k.close) / (maxPrice - minPrice)) * chartHeight;
+        klineCtx.strokeStyle = color;
+        klineCtx.lineWidth = 1;
+        klineCtx.beginPath();
+        klineCtx.moveTo(x, highY);
+        klineCtx.lineTo(x, lowY);
+        klineCtx.stroke();
+        const bodyTop = Math.min(openY, closeY);
+        const bodyHeight = Math.max(1, Math.abs(closeY - openY));
+        klineCtx.fillStyle = color;
+        klineCtx.fillRect(x - candleWidth/2, bodyTop, candleWidth, bodyHeight);
+    });
+
+    drawMALine(klineCtx, chartData, chartData.map(k => k.close), 5, '#ffcc00', candleWidth, startX, padding, minPrice, maxPrice, chartHeight);
+    drawMALine(klineCtx, chartData, chartData.map(k => k.close), 10, '#8000ff', candleWidth, startX, padding, minPrice, maxPrice, chartHeight);
+    drawBBILine(klineCtx, chartData, candleWidth, startX, padding, minPrice, maxPrice, chartHeight);
+
+    drawVolumeChart(chartData, candleWidth, startX);
+
+    klineCtx.fillStyle = '#8e8e93';
+    klineCtx.font = '9px sans-serif';
+    klineCtx.textAlign = 'right';
+    klineCtx.fillText(maxPrice.toFixed(2), width - 3, 12);
+    klineCtx.fillText(minPrice.toFixed(2), width - 3, height - 3);
+
+    klineCtx.textAlign = 'left';
+    klineCtx.fillStyle = '#ffcc00';
+    klineCtx.fillText('MA5', 3, 12);
+    klineCtx.fillStyle = '#8000ff';
+    klineCtx.fillText('MA10', 30, 12);
+    klineCtx.fillStyle = '#00cfff';
+    klineCtx.fillText('BBI', 60, 12);
+}
+
+function drawMALine(ctx, data, prices, period, color, candleWidth, startX, padding, minPrice, maxPrice, chartHeight) {
+    if (data.length < period) return;
+    const maValues = calculateSMA(prices, period);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    let started = false;
+    for (let i = period - 1; i < data.length; i++) {
+        if (maValues[i] === null) continue;
+        const x = startX + i * (candleWidth + 1);
+        const y = padding + ((maxPrice - maValues[i]) / (maxPrice - minPrice)) * chartHeight;
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+}
+
+function drawBBILine(ctx, data, candleWidth, startX, padding, minPrice, maxPrice, chartHeight) {
+    if (data.length < 24) return;
+    const prices = data.map(k => k.close);
+    const bbiVals = calculateBBIArray(prices);
+    ctx.strokeStyle = '#00cfff';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 2]);
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < data.length; i++) {
+        if (bbiVals[i] === null) continue;
+        const x = startX + i * (candleWidth + 1);
+        const y = padding + ((maxPrice - bbiVals[i]) / (maxPrice - minPrice)) * chartHeight;
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+
+function drawVolumeChart(data, candleWidth, startX) {
+    const volumeCanvas = document.getElementById('volumeCanvas');
+    const ctx = volumeCanvas.getContext('2d');
+    const width = volumeCanvas.width;
+    const height = volumeCanvas.height;
+    ctx.clearRect(0, 0, width, height);
+    if (!data || data.length === 0) return;
+    let maxVolume = 0;
+    data.forEach(k => { maxVolume = Math.max(maxVolume, k.volume || 0); });
+    if (maxVolume === 0) maxVolume = 1;
+    const padding = 3;
+    const chartHeight = height - padding * 2;
+    data.forEach((k, i) => {
+        const x = startX + i * (candleWidth + 1);
+        const isUp = k.close >= k.open;
+        const color = isUp ? 'rgba(255,59,48,0.5)' : 'rgba(52,199,89,0.5)';
+        const volHeight = Math.max(1, ((k.volume || 0) / maxVolume) * chartHeight);
+        const volY = height - padding - volHeight;
+        ctx.fillStyle = color;
+        ctx.fillRect(x - candleWidth/2, volY, candleWidth, volHeight);
+    });
+}
+
+// ===== 实时行情（东方财富接口，天然支持跨域，无需Referer）=====
+// 字段说明: f43=现价×100, f60=昨收×100, f169=涨跌额×100, f170=涨跌幅×100
+// f44=最高×100, f45=最低×100, f47=成交量(手), f48=成交额(元), f46=开盘×100
+const STOCK_CODE = '601138';
+const EM_SECID   = '1.601138'; // 东方财富 secid：1=沪市，0=深市
+
+async function fetchRealtime() {
+    try {
+        const ts = Date.now();
+        const url = `https://push2.eastmoney.com/api/qt/stock/get?secid=${EM_SECID}&fields=f43,f44,f45,f46,f47,f48,f57,f58,f60,f116,f117,f168,f169,f170&ut=fa5fd1943c7b386f172d6893dbfba10b&_=${ts}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        return parseEMRealtime(json);
+    } catch (e) {
+        log('东方财富实时行情获取失败: ' + e.message);
+        return false;
+    }
+}
+
+function parseEMRealtime(json) {
+    const d = json && json.data;
+    if (!d || !d.f43 || d.f43 === '-') { log('东方财富数据为空'); return false; }
+    const price     = d.f43  / 100;   // 现价
+    const prevClose = d.f60  / 100;   // 昨收
+    const high      = d.f44  / 100;   // 最高
+    const low       = d.f45  / 100;   // 最低
+    const open      = d.f46  / 100;   // 开盘
+    const volume    = d.f47  || 0;    // 成交量（手）
+    const amount    = d.f48  || 0;    // 成交额（元）
+    const chg       = d.f169 / 100;   // 涨跌额
+    const chgPct    = d.f170 / 100;   // 涨跌幅%
+    const turnover  = d.f168 != null ? (d.f168 / 100).toFixed(2) : '--'; // 换手率%
+    const name      = d.f58  || '工业富联';
+    if (price <= 0) return false;
+    const updown = chg >= 0 ? 'price-up' : 'price-down';
+    document.querySelector('.stock-name').textContent = name;
+    document.getElementById('currentPrice').textContent = price.toFixed(2);
+    document.getElementById('currentPrice').className   = 'current-price ' + updown;
+    document.getElementById('priceChange').textContent  = (chg >= 0 ? '+' : '') + chgPct.toFixed(2) + '%';
+    document.getElementById('priceChange').className    = 'price-change ' + updown;
+    document.getElementById('changeAmount').textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2);
+    document.getElementById('prevClose').textContent    = prevClose.toFixed(2);
+    document.getElementById('volume').textContent       = formatNumber(volume * 100); // 手→股
+    document.getElementById('amount').textContent       = formatNumber(amount);
+    document.getElementById('amplitude').textContent    = prevClose > 0
+        ? ((high - low) / prevClose * 100).toFixed(2) + '%' : '--';
+    if (document.getElementById('turnoverRate'))
+        document.getElementById('turnoverRate').textContent = turnover !== '--' ? turnover + '%' : '--';
+    document.getElementById('statusIndicator').textContent = '实时数据';
+    document.getElementById('dataSource').textContent = '东方财富';
+    log(`实时行情: ${name} 现价=${price} 涨跌=${chg >= 0 ? '+' : ''}${chg.toFixed(2)}`);
+    return price;
+}
+
+// ===== K线数据（东方财富前复权日K）=====
+// fields2: f51=日期,f52=开,f53=收,f54=高,f55=低,f56=成交量,f57=成交额,f58=振幅,f59=涨跌幅,f60=涨跌额,f61=换手率
+async function fetchKline() {
+    try {
+        const ts = Date.now();
+        const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${EM_SECID}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=120&ut=fa5fd1943c7b386f172d6893dbfba10b&_=${ts}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        return parseEMKline(json);
+    } catch (e) {
+        log('东方财富K线获取失败: ' + e.message);
+        return false;
+    }
+}
+
+function parseEMKline(json) {
+    try {
+        const klines = json && json.data && json.data.klines;
+        if (!Array.isArray(klines) || klines.length === 0) return false;
+        klineData = klines.map(row => {
+            const f = row.split(',');
+            return {
+                time:   f[0],
+                open:   parseFloat(f[1]),
+                close:  parseFloat(f[2]),
+                high:   parseFloat(f[3]),
+                low:    parseFloat(f[4]),
+                volume: parseInt(f[5])
+            };
+        }).filter(k => k.close > 0);
+        if (klineData.length === 0) return false;
+        log('东方财富K线: ' + klineData.length + '条，最新=' + klineData[klineData.length-1].time);
+        return true;
+    } catch (e) {
+        log('解析东方财富K线失败: ' + e.message);
+        return false;
+    }
+}
+
+// ===== 初始化 =====
+async function init() {
+    log('初始化 v3.0（东方财富接口）...');
+    document.getElementById('statusIndicator').textContent = '加载中...';
+
+    // 并发拉取K线和实时价，加快首屏速度
+    const [hasKline, rtPrice] = await Promise.all([fetchKline(), fetchRealtime()]);
+
+    if (hasKline) {
+        log('K线获取成功，条数: ' + klineData.length);
+        // 用实时价覆盖最新一根K线收盘，让当天信号更准确
+        if (rtPrice > 0) {
+            klineData[klineData.length - 1].close = rtPrice;
+        }
+        drawKlineChart(klineData);
+        calculateAllIndicators();
+    } else {
+        log('K线获取失败，使用内置历史数据');
+        useMockData();
+    }
+
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('zh-CN');
+
+    // 股价每3秒刷新一次（实时盘口）
+    setInterval(async () => {
+        const rt = await fetchRealtime();
+        if (rt > 0 && klineData.length > 0) {
+            klineData[klineData.length - 1].close = rt;
+            calculateAllIndicators();
+        }
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('zh-CN');
+    }, 3000);
+
+    // K线每60秒刷新一次（K线数据变化慢，无需频繁拉取）
+    setInterval(async () => {
+        const hasKline = await fetchKline();
+        if (hasKline) {
+            const rtPrice = parseFloat(document.getElementById('currentPrice').textContent) || 0;
+            if (rtPrice > 0) {
+                klineData[klineData.length - 1].close = rtPrice;
+            }
+            drawKlineChart(klineData);
+            calculateAllIndicators();
+        }
+    }, 60000);
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
+</script>
+</body>
+</html>
